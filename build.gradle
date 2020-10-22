@@ -1,0 +1,88 @@
+buildscript {
+	ext {
+		springBootVersion = '2.3.4.RELEASE'
+		querydslPluginVersion = '1.0.10'
+	}
+	repositories {
+		mavenCentral()
+		maven { url "https://plugins.gradle.org/m2/" } // plugin 저장소
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath "io.spring.gradle:dependency-management-plugin:1.0.7.RELEASE"
+		classpath("gradle.plugin.com.ewerk.gradle.plugins:querydsl-plugin:${querydslPluginVersion}")
+	}
+}
+
+plugins {
+	id 'org.springframework.boot' version '2.3.4.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.10.RELEASE'
+	id 'java'
+}
+
+apply plugin: "com.ewerk.gradle.plugins.querydsl"
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+compileQuerydsl{
+	options.annotationProcessorPath = configurations.querydsl
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+	querydsl.extendsFrom compileClasspath
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'com.h2database:h2'
+	annotationProcessor 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+
+	implementation("com.querydsl:querydsl-jpa") // querydsl
+	implementation("com.querydsl:querydsl-apt") // querydsl
+	testCompileOnly("org.projectlombok:lombok")
+	testAnnotationProcessor("org.projectlombok:lombok")
+}
+
+test {
+	useJUnitPlatform()
+}
+
+def querydslSrcDir = 'src/main/generated'
+
+querydsl {
+	library = "com.querydsl:querydsl-apt"
+	jpa = true
+	querydslSourcesDir = querydslSrcDir
+}
+
+sourceSets {
+	main {
+		java {
+			srcDirs = ['src/main/java', querydslSrcDir]
+		}
+	}
+}
+
+project.afterEvaluate {
+	project.tasks.compileQuerydsl.options.compilerArgs = [
+			"-proc:only",
+			"-processor", project.querydsl.processors() +
+					',lombok.launch.AnnotationProcessorHider$AnnotationProcessor'
+	]
+}
